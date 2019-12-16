@@ -102,9 +102,14 @@ class ModelFit:
     except FileExistsError:
       pass
     return s_work_dir 
-    
-      
-      
+
+  def load_checkpoints(self, s_fname):
+    dir_name    = "checkpoint_models"
+    s_work_dir  = os.path.join(os.getcwd(), dir_name)
+    if os.isfile(os.path.join(s_work_dir, s_fname)):
+      return torch.load(s_fname)
+    else 
+      return None
 
   def train(self, n_epochs=10, aX_tr, ay_tr, lr=f_lr, filter=n_filter):
     """
@@ -116,16 +121,9 @@ class ModelFit:
 
     returns: # of best solutions (models)
     """
-
-    o_mass_model = MassCNN(50, filter, 3, 5)
-
     # Random data
     d_trains = SyntheticData(750, 5, 50, 3)
     d_valids = SyntheticData(750, 5, 50, 3)
-
-    # optimization
-    o_optimizer = torch.optim.SGD(o_mass_model.parameters(), lr=0.0001)
-    o_cost      = torch.nn.CrossEntropyLoss()
   
     af_Tr = DataLoader(d_trains, batch_size=100, shuffle=True)
     af_Va = DataLoader(d_valids, batch_size=10, shuffle=True)
@@ -133,30 +131,43 @@ class ModelFit:
     t_solutions = []
     t_cost_per_epoch = []
     for epoch in range(n_epochs):
-      m_models = dict()
-      fgr_cost = 0
-      for af_X, af_y in af_Tr:  # iterative over batch of data
-        o_optimizer.zero_grad() ## Back propagation the loss
-        af_y_pr  = o_mass_model(af_X.float())
-        o_loss   = o_cost(af_y_pr, af_y)
-        o_loss.backward()
-        o_optimizer.step() # back propagate
-        fgr_cost += o_loss.data
-      t_cost_per_epoch.append(fgr_cost)
+      # model, optimizer, and lost function
+      o_mass_model = MassCNN(50, filter, 3, 5)
+      o_optimizer = torch.optim.SGD(o_mass_model.parameters(), lr=f_lr)
+      o_cost      = torch.nn.CrossEntropyLoss()
+      m_models    = dict()
+
+      s_fname      = "%s_%s" %(epoch, n_iter)
+      o_checkpoint = self.load_checkpoints(s_fname):
+      if o_checkpoint:
+        print("INFO: Loading model from checkpoint epoch %s %s" %(epoch, n_iter))
+        o_mass_model.loadstate(o_checkpoint['model_state'])
+        o_optimizer.loadstate(o_checkpoint['optimizer_state'])
+        o_loss.load_state(o_checkpoint['loss'])
+        f_lr        = o_checkpoint['lr'] 
+        f_accuracy  = o_checkpoint['val_acc'] 
+      else:
+        fgr_cost = 0
+        for af_X, af_y in af_Tr:  # iterative over batch of data
+          o_optimizer.zero_grad() ## Back propagation the loss
+          af_y_pr  = o_mass_model(af_X.float())
+          o_loss   = o_cost(af_y_pr, af_y)
+          o_loss.backward()
+          o_optimizer.step() # back propagate
+          fgr_cost += o_loss.data
+        t_cost_per_epoch.append(fgr_cost)
     
-      #print(o_mass_model.state_dict().keys())
-      #print("Epochs in fun ", epoch, id(o_mass_model))
-      # Where is validation loss?
-      o_mass_model.eval()
-      f_correct = 0
-      for af_x_va, af_y_va in af_Va:
-        z  = o_mass_model(af_x_va.float()).data
-        _, yhat = torch.max(z.data, 1)
-        f_correct += (yhat == af_y_va).sum().item()
-      f_accuracy = "%0.3f" %(f_correct / 1000) # fixed this with sample size
+        o_mass_model.eval()
+        f_correct = 0
+        for af_x_va, af_y_va in af_Va:
+          z  = o_mass_model(af_x_va.float()).data
+          _, yhat = torch.max(z.data, 1)
+          f_correct += (yhat == af_y_va).sum().item()
+        f_accuracy = "%0.3f" %(f_correct / 1000) # fixed this with sample size
     
       m_models["epoch"] = epoch 
       m_models["iteration"] = n_iter
+      m_models["lr"] = f_lr 
       m_models["val_acc"] = f_accuracy
       m_models["model_state"] =  o_mass_model.state_dict()
       m_models["optimizer_state"] =  o_optimizer.state_dict()
@@ -204,9 +215,9 @@ class ModelFit:
 
   def test_model(d_tests, t_best_sols):
     """
-    Test performance of model on independent data. Since multiple models were generated, 
-    these models were tested aganist an independent data and their average performance 
-    will be returned as final result.
+    Test performance of model on independent data. Since multiple best models were generated, 
+    they were tested aganist an independent data and their average performance is be returned 
+    as final result.
     
     params:
       d_tests: data for independent test
