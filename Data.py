@@ -3,7 +3,7 @@ Written by: Rojan Shrestha PhD
 Mon Nov 18 17:35:38 2019
 '''
 
-import sys
+import sys, os, errno
 
 import numpy as np
 
@@ -13,11 +13,11 @@ class FCdata:
   
   def __init__(self, path_to_dir, path_to_label_data, path_to_marker):
     """
-      Aims: class to store
-      Params:
-        st_path_to_file: 
-        st_path_to_label: 
-        st_path_to_marker: 
+     
+    Params:
+      st_path_to_file: 
+      st_path_to_label: 
+      st_path_to_marker: 
     """
     self._ma_data    = {}
 
@@ -28,12 +28,8 @@ class FCdata:
     self._Yvalids   = []
     self._Ytest     = []
 
-
-    self.read_labels(path_to_label)
-    self.read_markers(path_to_marker)
-
     # get ...
-    oj_idata = self.iData(path_to_dir)
+    oj_idata = self.iData(path_to_dir, path_to_label_data, path_to_marker)
     for st_path, st_label in self._ma_labels.items():
       ar_events, ts_channels = oj_idata.read_flowdata(st_path, 
                                                       markers = self._ts_markers, 
@@ -42,17 +38,15 @@ class FCdata:
       self._ma_data[st_path] = ar_events
 
 
-
   def load_data(self): 
     """
       
     """
     in_num_sample   = len(self._ma_labels)
-    in_train_sample = int(0.7*in_num_sample)
-     
-
+    in_train_sample = int(0.70*in_num_sample)
     in_valid_sample = int(0.15*in_num_sample)
     in_test_sample  = int(0.15*in_num_sample)
+
     ar_idx          = np.random.permutation(in_num_sample)
     ar_keys         = self._ma_labels.keys()
 
@@ -65,6 +59,8 @@ class FCdata:
     self._Ytrains   = []
     self._Yvalids   = []
     self._Ytest     = []
+
+    # return ...
 
   def combine_samples(self, data_list, sample_id):
     """
@@ -141,11 +137,11 @@ class FCdata:
    
     def __init__(self, path_to_dir, path_to_label, path_to_marker, cofactor=5):
 
-      self._ma_labels  = {}
+      self._ma_labels  = dict() 
       self._ts_markers = []
 
-      self.read_labels(path_to_label)
-      self.read_markers(path_to_marker)
+      self.read_labels(path_to_label)   # label either positive or neutral
+      self.read_markers(path_to_marker) # marker of each cell
 
       self._ts_samples      = []
       self._ts_phenotypes   = []
@@ -163,25 +159,26 @@ class FCdata:
 
     def read_labels(self, path_to_label):
       """
-        Aims: read the label of each mass cytometry file and 
-              store into dictionary
+        Read the label of each mass cytometry file and store into dictionary
 
         Params:
           path_to_label: path to label file
       """
-      try:
+
+      if os.path.exists(path_to_label):
         with open(path_to_label, "r") as oj_path:
           ts_fcm_files = oj_path.read().split("\n")
           for st_fcm_file in ts_fcm_files:
             if not st_fcm_file: continue
-            ts_parts = st_fcm_file.split("\t")
-            self._labels[ts_parts[0]] = ts_parts[1]
-      except IOError: 
-        raise "File not found error"
+            ts_parts = st_fcm_file.split(",")
+            if ts_parts[0] == 'fcs_filename' and ts_parts[1] == 'label': continue
+            self._ma_labels[ts_parts[0]] = ts_parts[1]
+      else: 
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path_to_label)
 
-    def read_markers(self, path_to_marker)
+    def read_markers(self, path_to_marker):
       """
-        Aims: read markers and store into list  
+        Read markers and store into list  
 
         Params:
           path_to_marker: path to marker file
@@ -235,8 +232,13 @@ class FCdata:
     ###     if st_file.endswith(".fcs"):
 
 def test():
- 
-  FCdata:
+  path_to_dir    = "./data/gated_alive/" 
+  path_to_label  = "./data/NK_fcs_samples_with_labels.csv"
+  path_to_marker = "./data/nk_marker.csv"
+  o_fc_data = FCdata(path_to_dir, path_to_label, path_to_marker) 
 
+
+
+test()
 
 
