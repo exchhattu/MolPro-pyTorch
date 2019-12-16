@@ -148,8 +148,8 @@ class FCdata:
 
       # read all files with suffix .fcs from the given directory.
       for fname, flabel in self._ma_labels.items():
-        full_path = os.path.join(path_to_dir, fname)
-        ar_events, ts_channels = self.read_flowdata(full_path, transform=None, auto_comp=False)
+        full_path   = os.path.join(path_to_dir, fname)
+        ar_events, ts_channels  = self.read_flowdata(full_path, transform=None, auto_comp=False)
 
         ts_marker_idx = [ts_channels.index(name) for name in self._ts_markers]
         x = ar_events[:, ts_marker_idx]
@@ -176,6 +176,7 @@ class FCdata:
       else: 
         raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path_to_label)
 
+
     def read_markers(self, path_to_marker):
       """
         Read markers and store into list  
@@ -183,10 +184,13 @@ class FCdata:
         Params:
           path_to_marker: path to marker file
       """
-
-      with open(path_to_marker, "r") as oj_path:
-        ts_markers = oj_path.read().split("\n")
-        self._ts_markers = [st_marker for st_marker in ts_markers if st_marker]
+      if os.path.exists(path_to_marker):
+        with open(path_to_marker, "r") as oj_path:
+          ts_markers = oj_path.read().split("\n")[0].split(",")
+          self._ts_markers = [st_marker for st_marker in ts_markers if st_marker]
+          print("Coding: ", self._ts_markers)
+      else:
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path_to_label)
 
   
     def read_flowdata(self, path_to_file, *args, **kwargs):
@@ -199,8 +203,9 @@ class FCdata:
 
         Returns: 
       """
-      st_fupath = os.path.join(path_to_dir, path_to_file) 
-      oj_f      = flowio.FlowData(st_fupath, args, kwargs)
+      # st_fupath = os.path.join(path_to_dir, path_to_file) 
+      print("Coding:", path_to_file)
+      oj_f      = flowio.FlowData(path_to_file)
       ar_events = np.reshape(oj_f.events, (-1, oj_f.channel_count))
   
       ts_channels = []
@@ -232,7 +237,7 @@ class FCdata:
     ###     if st_file.endswith(".fcs"):
 
 def test():
-  path_to_dir    = "./data/gated_alive/" 
+  path_to_dir    = "./data/gated_NK/" 
   path_to_label  = "./data/NK_fcs_samples_with_labels.csv"
   path_to_marker = "./data/nk_marker.csv"
   o_fc_data = FCdata(path_to_dir, path_to_label, path_to_marker) 
