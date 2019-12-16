@@ -30,12 +30,15 @@ class FCdata:
 
     # get ...
     oj_idata = self.iData(path_to_dir, path_to_label_data, path_to_marker)
-    for st_path, st_label in self._ma_labels.items():
-      ar_events, ts_channels = oj_idata.read_flowdata(st_path, 
-                                                      markers = self._ts_markers, 
-                                                      transform=None, 
-                                                      auto_comp=False)
-      self._ma_data[st_path] = ar_events
+    print("coding: 23 ", oj_idata._ts_samples)
+    print("coding: 12 ", oj_idata._ts_phenotypes) 
+    # for st_path, st_label in oj_idata._ma_labels.items():
+    #   print("Coding: ", st_path, st_label)
+    #   ar_events, ts_channels = oj_idata.read_flowdata(st_path, 
+    #                                                   markers = oj_idata._ts_markers, 
+    #                                                   transform=None, 
+    #                                                   auto_comp=False)
+    #   self._ma_data[st_path] = ar_events
 
 
   def load_data(self): 
@@ -188,7 +191,6 @@ class FCdata:
         with open(path_to_marker, "r") as oj_path:
           ts_markers = oj_path.read().split("\n")[0].split(",")
           self._ts_markers = [st_marker for st_marker in ts_markers if st_marker]
-          print("Coding: ", self._ts_markers)
       else:
         raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path_to_label)
 
